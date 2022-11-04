@@ -30,6 +30,7 @@ public class MIBOT extends AdvancedRobot {
 	double speedBullet; //bullet speed
 	double oldHeadEnemy;
 	double enemyEnergy;
+	
 	double direction = 1;
 	double timeElapsed;
 
@@ -48,16 +49,15 @@ public class MIBOT extends AdvancedRobot {
 		setAdjustRadarForGunTurn(true);
 		
 	    speedBullet = predictPos - Math.PI / 2 * powerBullet;
-	    setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
+		setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
 		random_int = (int)Math.floor(Math.random()*(max-min+1)+min);
 	}
 	
 	/**
 	 * onHitWall:  collision event with wall.
-	*/
+	 */
 	public void onHitWall(HitWallEvent e) {
 		changeDirection();
-		setAhead(300);
 	}
 
 	/**
@@ -65,8 +65,22 @@ public class MIBOT extends AdvancedRobot {
 	*/
 	public void onScannedRobot(ScannedRobotEvent e) {
 	    random_int = (int)Math.floor(Math.random()*(max-min+1)+min);
+		double turnRobot = getABearing(e) + Math.PI / 2;
+		turnRobot -= Math.max(0.5, e.getDistance() * random_int);
+
+		if(enemyEnergy > e.getEnergy()){
+			direction=-direction;
+			setMaxTurnRate(turnRobot);
+			setMaxVelocity(turnRobot);
+			setTurnLeft(90 * direction);
+		}	
+	    enemyEnergy = e.getEnergy();	
 		
-		//Finding the heading and heading change enemy
+		setTurnRightRadians(Utils.normalRelativeAngle(-getHeadingRadians()));	
+		setMaxVelocity(100 / getTurnRemaining());
+		setAhead(100 * direction);
+		
+		//Finding the heading and heading change.
 		double enemyHead = e.getHeadingRadians();
 		double enemyHeadChange = enemyHead - oldHeadEnemy;
 		oldHeadEnemy = enemyHead;
@@ -74,11 +88,11 @@ public class MIBOT extends AdvancedRobot {
 		double pX = getX() + e.getDistance() * Math.sin(getABearing(e));
 		double pY = getY() + e.getDistance() * Math.cos(getABearing(e));
 		
-		//prediction enemy coordinates
 		timeElapsed = 0;
 		//while product timeEllapsed and speedBullet less than getEnemyDistance
-		while((timeElapsed * speedBullet) <  getEnemyDistance(pX, pY)){
-			//enemy current X and Y
+		while((timeElapsed * speedBullet) <  getEnemyDistance(pX, pY)){	
+			
+			//predict enemy current X and Y
 			pX += Math.sin(enemyHead) * e.getVelocity();
 			pY += Math.cos(enemyHead) * e.getVelocity();
 			
@@ -91,10 +105,8 @@ public class MIBOT extends AdvancedRobot {
 			timeElapsed++;
 		}
 		
-		//targeting and fire
+		//Turn gun and fire
 		setTurnGunRightRadians(Utils.normalRelativeAngle(predictAim(pX, pY) - getGunHeadingRadians()));
-		setTurnLeft(-90 - e.getBearing());
-		setAhead((e.getDistance() - 140) * direction);
 		setFire(powerBullet);
 		setTurnRadarRightRadians(Utils.normalRelativeAngle(getABearing(e)-getRadarHeadingRadians())*2);	
 	}
@@ -136,12 +148,6 @@ public class MIBOT extends AdvancedRobot {
 	public double predictAim(double pX, double pY)
 	{
 		return Utils.normalAbsoluteAngle(Math.atan2(pX - getX(), pY - getY()));
-	}
-	
-	//predict velocity
-	public double predictVelocity(ScannedRobotEvent e)
-	{
-		return e.getVelocity() * Math.sin(e.getHeadingRadians() - getABearing(e));
 	}
 
 	//change direction
